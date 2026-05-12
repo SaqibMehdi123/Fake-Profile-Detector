@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Fake Profile Detector",
+    "slug": "fake-profile-detector",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.fakeprofiledetector"
+    },
+    "android": {
+      "package": "com.example.fakeprofiledetector"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

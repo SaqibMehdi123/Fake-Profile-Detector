@@ -1,0 +1,24 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/model.pkl
+backend/feature_schema.json
+
+# Node / Expo
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Notebook checkpoints
+notebook/.ipynb_checkpoints/
