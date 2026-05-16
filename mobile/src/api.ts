@@ -85,6 +85,73 @@ export async function resetApiBase() {
   await AsyncStorage.removeItem(API_KEY);
 }
 
+// ---------- Auto-discovery (LAN scan) ----------
+async function probeHost(host: string, timeoutMs = 1200): Promise<string | null> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(`http://${host}:8000/health`, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    if (j && (j.mode === 'ml' || j.mode === 'heuristic')) return `http://${host}:8000`;
+  } catch {}
+  return null;
+}
+
+/**
+ * Scan likely LAN subnets for a running backend on port 8000.
+ * Priority order:
+ *  1. Last-saved URL's subnet (fastest — covers DHCP IP changes on same network)
+ *  2. Expo dev-server subnet (Constants.hostUri, works in dev mode)
+ *  3. Common home/office router subnets (192.168.1.x, 192.168.0.x, 10.0.0.x, ...)
+ * Returns the first /health that responds with a valid mode, else null.
+ */
+export async function discoverBackend(
+  onProgress?: (msg: string) => void,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const subnets = new Set<string>();
+  const ipv4Of = (s: string): string | null => {
+    const m = s.match(/(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/);
+    return m ? m[1] : null;
+  };
+  // 1. Last-saved
+  try {
+    const stored = await AsyncStorage.getItem(API_KEY);
+    if (stored) { const n = ipv4Of(stored); if (n) subnets.add(n); }
+  } catch {}
+  // 2. Dev server
+  try {
+    const c: any = Constants;
+    for (const src of [c.expoGoConfig?.debuggerHost, c.expoGoConfig?.hostUri, c.expoConfig?.hostUri]) {
+      if (typeof src === 'string') { const n = ipv4Of(src); if (n) subnets.add(n); }
+    }
+  } catch {}
+  // 3. Common subnets
+  ['192.168.1', '192.168.0', '10.0.0', '192.168.43', '172.20.10'].forEach((s) => subnets.add(s));
+
+  const subnetList = [...subnets];
+  const totalIps = subnetList.length * 254;
+  let scanned = 0;
+  for (const subnet of subnetList) {
+    if (signal?.aborted) return null;
+    onProgress?.(`Scanning ${subnet}.0/24…`);
+    const ips = Array.from({ length: 254 }, (_, i) => `${subnet}.${i + 1}`);
+    const BATCH = 16;
+    for (let i = 0; i < ips.length; i += BATCH) {
+      if (signal?.aborted) return null;
+      const batch = ips.slice(i, i + BATCH);
+      const results = await Promise.all(batch.map((ip) => probeHost(ip)));
+      scanned += batch.length;
+      onProgress?.(`Scanned ${scanned}/${totalIps}`);
+      const found = results.find((r) => r !== null);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const base = await getApiBase();
   const res = await fetch(`${base}${path}`, {
