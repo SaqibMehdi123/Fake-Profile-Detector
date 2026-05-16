@@ -3,6 +3,7 @@ import { NavigationContainer, DefaultTheme as NavLight } from '@react-navigation
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -41,6 +42,13 @@ const navTheme = {
 };
 
 function Tabs() {
+  // When we set `tabBarStyle.paddingBottom`, React Navigation v7 stops applying
+  // its own safe-area inset — so we have to add it back manually, otherwise
+  // labels get hidden behind Android's gesture bar.
+  const insets = useSafeAreaInsets();
+  // +10 extra so labels have breathing room before the gesture bar / screen edge
+  const bottomPad = Math.max(insets.bottom, 8) + 10;
+  const CONTENT_HEIGHT = 42; // icon (~22) + tight gap + label (~14) + small slack
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -50,10 +58,12 @@ function Tabs() {
         tabBarStyle: {
           backgroundColor: colors.bgSurface,
           borderTopColor: colors.border,
-          height: 60,
+          height: CONTENT_HEIGHT + bottomPad,
+          paddingTop: 6,
+          paddingBottom: bottomPad,
         },
-        tabBarItemStyle: { paddingVertical: 6 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        tabBarItemStyle: { paddingVertical: 0 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 0 },
         tabBarIcon: ({ color, size, focused }) => {
           const map: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionicons.glyphMap]> = {
             Home: ['shield-checkmark', 'shield-checkmark-outline'],

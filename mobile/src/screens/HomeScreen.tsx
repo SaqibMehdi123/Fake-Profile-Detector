@@ -36,10 +36,17 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      {/* Static header — stays put while content scrolls below (matches History pattern) */}
+      <View style={styles.header}>
         <Text style={styles.heading}>Dashboard</Text>
-        <Text style={styles.subheading}>Detect fake profiles across IG · X · Facebook</Text>
+        <View style={styles.platformRow}>
+          <PlatformChip name="Instagram" icon="logo-instagram" color={colors.instagram} />
+          <PlatformChip name="X" icon="logo-twitter" color={colors.twitter} />
+          <PlatformChip name="Facebook" icon="logo-facebook" color={colors.facebook} />
+        </View>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Paste URL bar */}
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -133,6 +140,15 @@ export default function HomeScreen() {
   );
 }
 
+function PlatformChip({ name, icon, color }: { name: string; icon: keyof typeof Ionicons.glyphMap; color: string }) {
+  return (
+    <View style={[styles.platformChip, { borderColor: color + '33', backgroundColor: color + '0E' }]}>
+      <Ionicons name={icon} size={14} color={color} />
+      <Text style={[styles.platformChipText, { color }]}>{name}</Text>
+    </View>
+  );
+}
+
 function Tile({
   icon, tint, title, subtitle, onPress,
 }: {
@@ -185,10 +201,17 @@ function RecentRow({ item, isLast, onPress }: { item: HistoryEntry; isLast: bool
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  scroll: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 16 },
 
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   heading: { color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
-  subheading: { color: colors.textMuted, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  platformRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  platformChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 999, borderWidth: 1,
+  },
+  platformChipText: { fontSize: 12, fontWeight: '600' },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
