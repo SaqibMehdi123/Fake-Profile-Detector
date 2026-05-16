@@ -1,17 +1,27 @@
 {
   "expo": {
-    "name": "Fake Profile Detector",
+    "name": "Detectly",
     "slug": "fake-profile-detector",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAFA"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.example.fakeprofiledetector"
+      "bundleIdentifier": "com.example.detectly"
     },
     "android": {
-      "package": "com.example.fakeprofiledetector"
+      "package": "com.example.detectly",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAFAFA"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

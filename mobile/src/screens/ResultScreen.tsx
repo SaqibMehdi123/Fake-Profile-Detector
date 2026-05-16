@@ -31,7 +31,7 @@ export default function ResultScreen() {
   const extracted = result.extracted;
 
   const onShare = () => {
-    const txt = `${label}\nFake probability: ${Math.round(result.fake_probability * 100)}%\nVerdict: ${riskLabel(result.risk_level)}\n\nDetected with Profile Check.`;
+    const txt = `${label}\nFake probability: ${Math.round(result.fake_probability * 100)}%\nVerdict: ${riskLabel(result.risk_level)}\n\nDetected with Detectly.`;
     Share.share({ message: txt }).catch(() => {});
   };
 
