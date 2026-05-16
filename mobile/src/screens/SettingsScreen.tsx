@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii } from '../theme';
-import { api, getApiBase, setApiBase, resetApiBase, DEFAULT_BASE } from '../api';
+import { api, getApiBase, resetApiBase, DEFAULT_BASE } from '../api';
 
 export default function SettingsScreen() {
   const [url, setUrl] = useState('');
-  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'error'>('unknown');
   const [mode, setMode] = useState<string>('');
   const [isCustom, setIsCustom] = useState(false);
@@ -35,27 +33,15 @@ export default function SettingsScreen() {
       const current = await getApiBase();
       setUrl(current);
       setIsCustom(current !== DEFAULT_BASE);
-      // Auto-test on mount so user sees connection status immediately
       test();
     })();
   }, []);
-
-  const save = async () => {
-    if (!url.trim()) return;
-    setSaving(true);
-    await setApiBase(url.trim());
-    setIsCustom(url.trim() !== DEFAULT_BASE);
-    setSaving(false);
-    await test();
-    Alert.alert('Saved', 'Backend URL updated.');
-  };
 
   const reset = async () => {
     await resetApiBase();
     setUrl(DEFAULT_BASE);
     setIsCustom(false);
     await test();
-    Alert.alert('Reset', 'Using auto-detected backend URL.');
   };
 
   return (
@@ -63,48 +49,44 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Settings</Text>
 
-        <Text style={styles.section}>Backend connection</Text>
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>API base URL</Text>
-          <TextInput
-            mode="outlined"
-            value={url}
-            onChangeText={setUrl}
-            placeholder={DEFAULT_BASE}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            outlineColor={colors.border}
-            activeOutlineColor={colors.primary}
-            textColor={colors.text}
-            style={{ backgroundColor: colors.bgSurface }}
-            dense
-          />
-          <Text style={styles.hint}>
-            {isCustom
-              ? `Custom URL. Auto-detected: ${DEFAULT_BASE}`
-              : 'Auto-detected from your dev server. Override only if needed.'}
-          </Text>
-          <View style={styles.btnRow}>
-            <Button mode="outlined" onPress={test} textColor={colors.text} style={{ flex: 1, borderColor: colors.border }}>Test</Button>
-            <Button mode="contained" onPress={save} loading={saving} buttonColor={colors.primary} style={{ flex: 1 }}>Save</Button>
-          </View>
-          {isCustom && (
-            <Button mode="text" onPress={reset} textColor={colors.textMuted} compact style={{ marginTop: 6 }}>Reset to auto-detected</Button>
-          )}
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, {
-              backgroundColor: status === 'ok' ? colors.safe : status === 'error' ? colors.fake : colors.textDim,
-            }]} />
-            <Text style={styles.statusText}>
-              {status === 'ok' && `Connected · mode: ${mode}`}
-              {status === 'error' && (mode === 'not the backend'
-                ? 'URL responded but is not our backend — wrong port?'
-                : 'Cannot reach backend')}
+        {/* Prominent backend status banner */}
+        <View style={[
+          styles.statusBanner,
+          status === 'ok'      && { backgroundColor: colors.safeBg,   borderColor: colors.safe + '33' },
+          status === 'error'   && { backgroundColor: colors.fakeBg,   borderColor: colors.fake + '33' },
+          status === 'unknown' && { backgroundColor: colors.bgSubtle, borderColor: colors.border },
+        ]}>
+          <View style={[styles.statusBigDot, {
+            backgroundColor: status === 'ok' ? colors.safe : status === 'error' ? colors.fake : colors.textDim,
+          }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statusBannerTitle}>
+              {status === 'ok' && 'Backend connected'}
+              {status === 'error' && 'Backend offline'}
               {status === 'unknown' && 'Checking connection…'}
             </Text>
+            <Text style={styles.statusBannerSub}>
+              {status === 'ok' && `mode: ${mode}`}
+              {status === 'error' && (mode === 'not the backend'
+                ? 'URL responded but is not our backend — wrong port?'
+                : 'Cannot reach the backend at the URL below.')}
+              {status === 'unknown' && 'Pinging /health …'}
+            </Text>
           </View>
+          <Pressable onPress={test} hitSlop={10} style={styles.refreshBtn}>
+            <Ionicons name="refresh" size={18} color={colors.textSecondary} />
+          </Pressable>
         </View>
+
+        {/* Show the current API URL inline (read-only). If user is on auto-detect, this just shows the auto URL.
+            If user previously saved a custom one, they can clear it with the small reset button. */}
+        <Text style={styles.urlLine}>API URL: <Text style={styles.urlValue}>{url}</Text></Text>
+        {isCustom && (
+          <Pressable onPress={reset} style={styles.resetLink}>
+            <Ionicons name="refresh" size={13} color={colors.primary} />
+            <Text style={styles.resetLinkText}>Reset to auto-detected ({DEFAULT_BASE})</Text>
+          </Pressable>
+        )}
 
         <Text style={styles.section}>About</Text>
         <View style={styles.card}>
@@ -156,6 +138,27 @@ const styles = StyleSheet.create({
   },
   rowLabel: { color: colors.text, fontSize: 13, flex: 1 },
   rowVal: { color: colors.textMuted, fontSize: 12 },
+
+  statusBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: radii.lg, borderWidth: 1, marginBottom: 8,
+  },
+  statusBigDot: { width: 12, height: 12, borderRadius: 6 },
+  statusBannerTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  statusBannerSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  refreshBtn: {
+    width: 34, height: 34, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.border,
+  },
+
+  urlLine: { color: colors.textMuted, fontSize: 11, marginTop: 8, paddingHorizontal: 4 },
+  urlValue: { color: colors.textSecondary, fontSize: 11 },
+  resetLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginTop: 6, paddingHorizontal: 4,
+  },
+  resetLinkText: { color: colors.primary, fontSize: 11, fontWeight: '600' },
 
   disclaimer: { color: colors.textMuted, fontSize: 11, marginTop: 16, lineHeight: 16, textAlign: 'center' },
 });

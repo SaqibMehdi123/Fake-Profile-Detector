@@ -18,6 +18,12 @@
     },
     "plugins": [
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "21d0f46d-4017-465f-a1f6-4967f19df87c"
+      }
+    },
+    "owner": "saqib-mehdi"
   }
 }

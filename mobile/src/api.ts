@@ -43,28 +43,38 @@ export interface AnalyzeResult {
 const API_KEY = 'API_BASE_URL';
 
 /**
- * Auto-detect the backend URL from the Expo dev server's host IP.
- * Since the backend runs on the same machine, we just swap the port to 8000.
+ * Auto-detect the backend URL from the Expo dev server's host IP each time.
+ * Lazy so a Wi-Fi reconnect / IP change is picked up automatically.
  */
-function getAutoDetectedBase(): string {
+export function getDefaultBase(): string {
   try {
-    const debuggerHost =
-      (Constants as any).expoGoConfig?.debuggerHost ??
-      (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ??
-      Constants.expoConfig?.hostUri;
-    if (debuggerHost) {
-      const ip = debuggerHost.split(':')[0];
-      if (ip) return `http://${ip}:8000`;
+    const c: any = Constants;
+    const sources: any[] = [
+      c.expoGoConfig?.debuggerHost,
+      c.expoGoConfig?.hostUri,
+      c.manifest2?.extra?.expoGo?.debuggerHost,
+      c.expoConfig?.hostUri,
+      c.manifest?.debuggerHost,
+      c.manifest?.hostUri,
+      c.linkingUri,
+    ];
+    for (const src of sources) {
+      if (typeof src !== 'string' || !src) continue;
+      // src looks like "192.168.1.5:8081" or "exp://192.168.1.5:8081"
+      const m = src.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+      if (m && m[1]) return `http://${m[1]}:8000`;
     }
   } catch {}
-  return 'http://10.0.2.2:8000'; // fallback for Android emulator
+  return 'http://10.0.2.2:8000'; // Android emulator fallback
 }
 
-export const DEFAULT_BASE = getAutoDetectedBase();
+// Kept for any imports that still reference the old constant (e.g. Settings UI)
+export const DEFAULT_BASE = getDefaultBase();
 
 export async function getApiBase(): Promise<string> {
   const stored = await AsyncStorage.getItem(API_KEY);
-  return stored || DEFAULT_BASE;
+  // If user saved a custom URL, use it; otherwise recompute auto-detected base each call.
+  return stored || getDefaultBase();
 }
 
 export async function setApiBase(url: string) {

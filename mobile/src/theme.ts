@@ -9,9 +9,9 @@ export const colors = {
   bgSubtle: '#F4F4F5',          // for icon backgrounds, subtle fills
   bgHover: '#F4F4F5',
 
-  primary: '#4F46E5',            // indigo-600
-  primaryDeep: '#4338CA',
-  primarySubtle: '#EEF2FF',      // indigo-50, for soft highlights
+  primary: '#2563EB',            // blue-600
+  primaryDeep: '#1D4ED8',
+  primarySubtle: '#EFF6FF',      // blue-50
 
   text: '#18181B',               // zinc-900
   textSecondary: '#3F3F46',      // zinc-700

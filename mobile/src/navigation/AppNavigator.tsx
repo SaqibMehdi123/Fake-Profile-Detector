@@ -17,7 +17,7 @@ import type { PredictionResult } from '../api';
 
 export type RootStackParamList = {
   Tabs: undefined;
-  DetectByLink: undefined;
+  DetectByLink: { prefillUrl?: string } | undefined;
   DetectByFeatures: { prefill?: any } | undefined;
   UsernameAnalyzer: undefined;
   BioAnalyzer: undefined;
