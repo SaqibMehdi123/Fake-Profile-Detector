@@ -57,37 +57,50 @@ SPAM_KEYWORDS = [
 
 
 def analyze_username(username: str) -> tuple[float, list[Reason]]:
-    """Return (suspicion 0-1, reasons)."""
+    """Return (suspicion 0-1, reasons).
+
+    Note: long digit suffixes (like 'saqibme03871376') are common on Twitter where the
+    platform auto-suggests handles for new sign-ups. We treat that pattern as NEUTRAL —
+    only flag clearly suspicious patterns (all-digits, gibberish, etc.).
+    """
     reasons: list[Reason] = []
     if not username:
         return 0.5, [Reason(label="No username provided", impact="neutral")]
 
     score = 0.0
     digits = sum(c.isdigit() for c in username)
-    digit_ratio = digits / len(username)
+    letters = sum(c.isalpha() for c in username)
     underscores = username.count("_")
-    has_long_digit_run = bool(re.search(r"\d{5,}", username))
     is_all_digits = username.isdigit()
-    looks_random = bool(re.search(r"[a-z]{3,}\d{3,}$", username.lower()))
+    # Gibberish detection: long letter sequence with no vowels = probably random
+    letter_seq = re.sub(r"[^a-zA-Z]", "", username).lower()
+    has_no_vowels = (len(letter_seq) >= 6 and not any(v in letter_seq for v in "aeiou"))
 
-    if digit_ratio > 0.4:
-        score += 0.35
-        reasons.append(Reason(label=f"High digit ratio ({digit_ratio:.0%}) — common in auto-generated handles", impact="negative"))
-    if has_long_digit_run:
-        score += 0.25
-        reasons.append(Reason(label="Long run of digits (5+) at end of username", impact="negative"))
     if is_all_digits:
-        score += 0.4
-        reasons.append(Reason(label="Username is all digits", impact="negative"))
-    if looks_random:
+        score += 0.55
+        reasons.append(Reason(label="Username is all digits — almost certainly a bot", impact="negative"))
+    elif letters == 0 and digits >= 4:
+        score += 0.45
+        reasons.append(Reason(label="No letters in username", impact="negative"))
+
+    if has_no_vowels:
+        score += 0.25
+        reasons.append(Reason(label="Username letters look random (no vowels)", impact="negative"))
+
+    if underscores >= 4:
         score += 0.15
-        reasons.append(Reason(label="Pattern looks auto-generated (word + digits)", impact="negative"))
-    if underscores >= 3:
-        score += 0.1
-        reasons.append(Reason(label="Many underscores in username", impact="negative"))
-    if len(username) <= 3:
-        score += 0.1
-        reasons.append(Reason(label="Very short username", impact="neutral"))
+        reasons.append(Reason(label="Excessive underscores", impact="negative"))
+
+    if len(username) <= 2:
+        score += 0.15
+        reasons.append(Reason(label="Extremely short username", impact="neutral"))
+
+    # Long-digit-suffix usernames (like 'saqibme03871376' or 'user12345678') are AUTO-SUGGESTED
+    # by Twitter/X for new sign-ups. We add a small contextual note but no fake score.
+    if re.search(r"[a-z]{3,}\d{6,}$", username.lower()):
+        reasons.append(Reason(
+            label="Looks auto-suggested by the platform (word + digit suffix) — common for new accounts",
+            impact="neutral"))
 
     if score == 0:
         reasons.append(Reason(label="Username pattern looks normal", impact="positive"))
