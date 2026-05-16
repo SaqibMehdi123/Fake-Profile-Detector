@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { TextInput, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii } from '../theme';
-import { api, getApiBase, resetApiBase, DEFAULT_BASE } from '../api';
+import { api, getApiBase, setApiBase, resetApiBase, DEFAULT_BASE } from '../api';
 
 export default function SettingsScreen() {
   const [url, setUrl] = useState('');
+  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'error'>('unknown');
   const [mode, setMode] = useState<string>('');
   const [isCustom, setIsCustom] = useState(false);
@@ -37,6 +39,16 @@ export default function SettingsScreen() {
     })();
   }, []);
 
+  const save = async () => {
+    if (!url.trim()) return;
+    setSaving(true);
+    await setApiBase(url.trim());
+    setIsCustom(url.trim() !== DEFAULT_BASE);
+    setSaving(false);
+    await test();
+    Alert.alert('Saved', 'Backend URL updated.');
+  };
+
   const reset = async () => {
     await resetApiBase();
     setUrl(DEFAULT_BASE);
@@ -46,10 +58,10 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Settings</Text>
 
-        {/* Prominent backend status banner */}
+        {/* Prominent status banner */}
         <View style={[
           styles.statusBanner,
           status === 'ok'      && { backgroundColor: colors.safeBg,   borderColor: colors.safe + '33' },
@@ -69,7 +81,7 @@ export default function SettingsScreen() {
               {status === 'ok' && `mode: ${mode}`}
               {status === 'error' && (mode === 'not the backend'
                 ? 'URL responded but is not our backend — wrong port?'
-                : 'Cannot reach the backend at the URL below.')}
+                : 'Set the backend URL below and tap Save.')}
               {status === 'unknown' && 'Pinging /health …'}
             </Text>
           </View>
@@ -78,15 +90,39 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        {/* Show the current API URL inline (read-only). If user is on auto-detect, this just shows the auto URL.
-            If user previously saved a custom one, they can clear it with the small reset button. */}
-        <Text style={styles.urlLine}>API URL: <Text style={styles.urlValue}>{url}</Text></Text>
-        {isCustom && (
-          <Pressable onPress={reset} style={styles.resetLink}>
-            <Ionicons name="refresh" size={13} color={colors.primary} />
-            <Text style={styles.resetLinkText}>Reset to auto-detected ({DEFAULT_BASE})</Text>
-          </Pressable>
-        )}
+        {/* Backend URL card — REQUIRED for installed APK builds where auto-detect can't work */}
+        <Text style={styles.section}>Backend URL</Text>
+        <View style={styles.card}>
+          <TextInput
+            mode="outlined"
+            value={url}
+            onChangeText={setUrl}
+            placeholder="http://192.168.1.5:8000"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            outlineColor={colors.border}
+            activeOutlineColor={colors.primary}
+            textColor={colors.text}
+            style={{ backgroundColor: colors.bgSurface }}
+            dense
+          />
+          <Text style={styles.hint}>
+            {isCustom
+              ? 'Custom URL saved.'
+              : 'Auto-detected from your dev server. In a production APK you must enter it manually:\n  • LAN: http://<laptop-ip>:8000 (phone + laptop on same Wi-Fi)\n  • Public: paste your ngrok https URL'}
+          </Text>
+          <View style={styles.btnRow}>
+            <Button mode="outlined" onPress={test} textColor={colors.text} style={{ flex: 1, borderColor: colors.border }}>Test</Button>
+            <Button mode="contained" onPress={save} loading={saving} buttonColor={colors.primary} style={{ flex: 1 }}>Save</Button>
+          </View>
+          {isCustom && (
+            <Pressable onPress={reset} style={styles.resetLink}>
+              <Ionicons name="refresh" size={13} color={colors.primary} />
+              <Text style={styles.resetLinkText}>Reset to auto-detected ({DEFAULT_BASE})</Text>
+            </Pressable>
+          )}
+        </View>
 
         <Text style={styles.section}>About</Text>
         <View style={styles.card}>
@@ -120,15 +156,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 20, paddingBottom: 40 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.4, marginBottom: 18 },
-  section: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 14, marginBottom: 8 },
+  section: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 18, marginBottom: 8 },
 
   card: { backgroundColor: colors.bgSurface, padding: 16, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border },
-  cardLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 8, fontWeight: '500' },
   hint: { color: colors.textMuted, fontSize: 11, marginTop: 8, lineHeight: 16 },
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { color: colors.textMuted, fontSize: 12 },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
   rowIcon: {
@@ -152,11 +184,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface, borderWidth: 1, borderColor: colors.border,
   },
 
-  urlLine: { color: colors.textMuted, fontSize: 11, marginTop: 8, paddingHorizontal: 4 },
-  urlValue: { color: colors.textSecondary, fontSize: 11 },
   resetLink: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    marginTop: 6, paddingHorizontal: 4,
+    marginTop: 10, paddingHorizontal: 2,
   },
   resetLinkText: { color: colors.primary, fontSize: 11, fontWeight: '600' },
 
